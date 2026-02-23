@@ -3,107 +3,113 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>WG Kochplan - 6er WG</title>
+    <title>WG Kochplan XXL</title>
     <style>
-        :root { --primary: #2ecc71; --bg: #f4f4f9; --text: #333; }
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: var(--bg); color: var(--text); display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; }
-        .container { background: white; padding: 2rem; border-radius: 15px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); width: 90%; max-width: 500px; text-align: center; }
-        h1 { color: var(--primary); margin-bottom: 0.5rem; }
-        .status-box { background: #e8f5e9; border: 2px solid var(--primary); padding: 1rem; border-radius: 10px; margin: 1.5rem 0; }
-        .chef-name { font-size: 2rem; font-weight: bold; display: block; }
-        .holiday-notice { color: #e74c3c; font-weight: bold; }
-        .controls { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 1rem; }
-        button { padding: 10px; border: none; border-radius: 5px; cursor: pointer; transition: 0.3s; }
-        .btn-swap { background: #3498db; color: white; }
-        .btn-skip { background: #f39c12; color: white; }
-        .footer { margin-top: 2rem; font-size: 0.8rem; color: #888; }
+        :root { --primary: #2ecc71; --bg: #f5f6fa; --accent: #3498db; }
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background: var(--bg); padding: 20px; color: #2f3640; }
+        .container { max-width: 600px; margin: 0 auto; background: white; padding: 20px; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); }
+        h1 { text-align: center; color: var(--primary); }
+        .calendar-grid { display: grid; grid-template-columns: 1fr; gap: 10px; margin-top: 20px; }
+        .day-card { border: 1px solid #dcdde1; padding: 15px; border-radius: 12px; display: flex; justify-content: space-between; align-items: center; transition: 0.2s; }
+        .day-card.weekend { background: #f1f2f6; opacity: 0.6; border-style: dashed; }
+        .day-card.holiday { background: #ffeaa7; border-color: #f1c40f; }
+        .date-info { font-weight: bold; }
+        .chef-info { color: var(--accent); font-weight: 800; font-size: 1.1rem; }
+        .swap-btn { background: #eee; border: none; padding: 5px 10px; border-radius: 5px; cursor: pointer; font-size: 0.8rem; }
+        .swap-btn:hover { background: #ddd; }
+        select { padding: 5px; border-radius: 5px; border: 1px solid #ccc; }
+        .footer-note { font-size: 0.8rem; text-align: center; margin-top: 20px; color: #7f8c8d; }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <h1>🍳 Wer kocht heute?</h1>
-    <p id="current-date"></p>
-
-    <div id="display-area" class="status-box">
-        </div>
-
-    <div class="controls">
-        <button class="btn-swap" onclick="modifyOffset(1)">Nächste Person (Tauschen)</button>
-        <button class="btn-skip" onclick="modifyOffset(-1)">Vorherige Person</button>
-    </div>
-
-    <div class="footer">
-        Reihenfolge: Lina, Janco, Cosi, Thilo, Felix, Aurel<br>
-        (Mo-Do aktiv, Bayern-Ferien werden ignoriert)
-    </div>
+    <h1>🍳 WG Koch-Kalender</h1>
+    <div id="calendar" class="calendar-grid"></div>
+    <p class="footer-note">Tipp: Klicke auf "Tauschen", wenn jemand krank ist oder ihr Pläne ändert.</p>
 </div>
 
 <script>
-    // 1. KONFIGURATION
     const bewohner = ["Lina", "Janco", "Cosi", "Thilo", "Felix", "Aurel"];
-    const startDatum = new Date("2026-02-23"); // Ein Montag als Referenzpunkt
-
-    // 2. FERIEN BAYERN 2026 (Beispielhafte Daten)
-    const ferien2026 = [
-        { start: new Date("2026-03-30"), end: new Date("2026-04-10") }, // Ostern
-        { start: new Date("2026-05-26"), end: new Date("2026-06-05") }, // Pfingsten
-        { start: new Date("2026-08-03"), end: new Date("2026-09-14") }, // Sommer
+    
+    // Ferien Bayern 2026
+    const ferien = [
+        { s: "2026-03-30", e: "2026-04-11" }, // Ostern
+        { s: "2026-05-26", e: "2026-06-05" }, // Pfingsten
+        { s: "2026-08-03", e: "2026-09-14" }, // Sommer
+        { s: "2026-11-02", e: "2026-11-06" }, // Herbst
+        { s: "2026-12-23", e: "2027-01-05" }  // Weihnachten
     ];
 
-    // Manueller Offset für Krankheit/Tausch (wird lokal im Browser gespeichert)
-    let manualOffset = parseInt(localStorage.getItem('wgOffset')) || 0;
+    // Speicher für manuelle Änderungen laden
+    let overrides = JSON.parse(localStorage.getItem('wgOverrides')) || {};
 
     function isHoliday(date) {
-        return ferien2026.some(f => date >= f.start && date <= f.end);
+        return ferien.some(f => date >= new Date(f.s) && date <= new Date(f.e));
     }
 
-    function calculateChef() {
-        const today = new Date();
-        const dayOfWeek = today.getDay(); // 0=So, 1=Mo... 4=Do
+    function renderCalendar() {
+        const calendarDiv = document.getElementById('calendar');
+        calendarDiv.innerHTML = "";
+        let today = new Date();
         
-        document.getElementById('current-date').innerText = today.toLocaleDateString('de-DE', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+        // Wir zeigen die nächsten 21 Tage an
+        let kochIndex = 0; 
+        // Referenz-Start (Montag, 23. Feb 2026) für die Grund-Rotation
+        let refDate = new Date("2026-02-23");
 
-        const display = document.getElementById('display-area');
+        for (let i = 0; i < 21; i++) {
+            let current = new Date();
+            current.setDate(today.getDate() + i);
+            let dateStr = current.toISOString().split('T')[0];
+            let dayOfWeek = current.getDay(); // 0=So, 1=Mo...
+            
+            let card = document.createElement('div');
+            card.className = 'day-card';
 
-        // Check: Wochenende (Fr, Sa, So)
-        if (dayOfWeek === 0 || dayOfWeek === 5 || dayOfWeek === 6) {
-            display.innerHTML = "<b>Wochenende!</b><br>Küche bleibt kalt oder jeder für sich.";
-            return;
-        }
+            let dateDisplay = current.toLocaleDateString('de-DE', { weekday: 'short', day: '2-digit', month: '2-digit' });
+            
+            let content = `<div class="date-info">${dateDisplay}</div>`;
 
-        // Check: Ferien
-        if (isHoliday(today)) {
-            display.innerHTML = "<span class='holiday-notice'>FERIEN IN BAYERN</span><br>Der Plan pausiert.";
-            return;
-        }
+            if (dayOfWeek === 0 || dayOfWeek === 5 || dayOfWeek === 6) {
+                card.classList.add('weekend');
+                content += `<div class="chef-info">Frei 🍺</div><div></div>`;
+            } else if (isHoliday(current)) {
+                card.classList.add('holiday');
+                content += `<div class="chef-info">Ferien 🏖️</div><div></div>`;
+            } else {
+                // Koch-Logik: Wer ist dran?
+                // Wir berechnen den Standard-Chef basierend auf den vergangenen Koch-Tagen seit Referenz
+                let diff = Math.floor((current - refDate) / (1000*60*60*24));
+                let kochTagCount = 0;
+                for(let j=0; j<=diff; j++) {
+                    let d = new Date(refDate); d.setDate(d.getDate()+j);
+                    if(d.getDay() >=1 && d.getDay() <=4 && !isHoliday(d)) kochTagCount++;
+                }
+                
+                let defaultChef = bewohner[(kochTagCount - 1) % bewohner.length];
+                let actualChef = overrides[dateStr] || defaultChef;
 
-        // Logik: Wie viele "Kochtage" sind seit Start vergangen?
-        let diffTime = Math.abs(today - startDatum);
-        let diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-        
-        // Wir zählen nur Mo-Do
-        let kochTageCounter = 0;
-        for(let i=0; i < diffDays; i++) {
-            let d = new Date(startDatum);
-            d.setDate(d.getDate() + i);
-            let dw = d.getDay();
-            if(dw >= 1 && dw <= 4 && !isHoliday(d)) {
-                kochTageCounter++;
+                content += `<div class="chef-info" id="chef-${dateStr}">${actualChef}</div>`;
+                content += `<button class="swap-btn" onclick="swap('${dateStr}')">Tauschen</button>`;
             }
+
+            card.innerHTML = content;
+            calendarDiv.appendChild(card);
         }
-
-        const index = (kochTageCounter + manualOffset) % bewohner.length;
-        display.innerHTML = "Heute ist dran:<br><span class='chef-name'>" + bewohner[index] + "</span>";
     }
 
-    function modifyOffset(val) {
-        manualOffset += val;
-        localStorage.setItem('wgOffset', manualOffset);
-        calculateChef();
+    function swap(dateStr) {
+        let currentChef = document.getElementById('chef-' + dateStr).innerText;
+        let p = prompt("Wer soll stattdessen kochen?", currentChef);
+        if (p && p.trim() !== "") {
+            overrides[dateStr] = p;
+            localStorage.setItem('wgOverrides', JSON.stringify(overrides));
+            renderCalendar();
+        }
     }
 
-    calculateChef();
+    renderCalendar();
 </script>
 
 </body>
