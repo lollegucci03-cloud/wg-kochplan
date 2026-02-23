@@ -5,122 +5,66 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>WG Kochplan</title>
     <style>
-        :root { --primary: #2ecc71; --bg: #f5f6fa; --accent: #3498db; }
-        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background: var(--bg); padding: 15px; color: #2f3640; }
-        .container { max-width: 500px; margin: 0 auto; background: white; padding: 20px; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); }
-        h1 { text-align: center; color: var(--primary); margin-bottom: 5px; font-size: 1.5rem; }
-        h2 { text-align: center; font-size: 0.9rem; color: #7f8c8d; margin-top: 0; margin-bottom: 20px; }
-        .calendar-grid { display: grid; grid-template-columns: 1fr; gap: 8px; }
-        .day-card { border: 1px solid #dcdde1; padding: 12px; border-radius: 12px; display: flex; justify-content: space-between; align-items: center; }
-        .day-card.today { border: 2px solid var(--primary); background: #f0fff4; }
-        .day-card.weekend { background: #f1f2f6; opacity: 0.6; border-style: dashed; }
-        .day-card.holiday { background: #fff9db; border-color: #f1c40f; }
-        .date-info { font-weight: bold; width: 90px; font-size: 0.9rem; }
-        .chef-info { color: var(--accent); font-weight: 800; font-size: 1rem; flex-grow: 1; text-align: center; }
-        .swap-btn { background: #eee; border: none; padding: 6px 10px; border-radius: 5px; cursor: pointer; font-size: 0.7rem; }
-        .footer-note { font-size: 0.75rem; text-align: center; margin-top: 20px; color: #7f8c8d; }
+        :root { --primary: #2ecc71; --bg: #f5f6fa; --accent: #3498db; --danger: #e74c3c; }
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background: var(--bg); padding: 0; margin: 0; color: #2f3640; }
+        
+        /* Obere Leiste / Hero Bereich */
+        .header { background: var(--primary); color: white; padding: 40px 20px; text-align: center; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+        .header h1 { margin: 0; font-size: 1.1rem; opacity: 0.9; font-weight: 400; }
+        .today-chef-box { margin-top: 15px; background: rgba(255,255,255,0.2); padding: 20px; border-radius: 20px; backdrop-filter: blur(8px); border: 1px solid rgba(255,255,255,0.3); }
+        .today-name { font-size: 2.5rem; font-weight: 900; display: block; text-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        .today-label { font-size: 1rem; text-transform: uppercase; letter-spacing: 1.5px; font-weight: 600; }
+        #random-quote { font-style: italic; font-size: 0.85rem; margin-top: 10px; opacity: 0.9; display: block; }
+
+        .container { max-width: 500px; margin: -25px auto 40px; background: white; padding: 25px; border-radius: 25px; box-shadow: 0 15px 35px rgba(0,0,0,0.1); position: relative; }
+        .calendar-grid { display: grid; grid-template-columns: 1fr; gap: 10px; }
+        
+        .day-card { border: 1px solid #edeff2; padding: 15px; border-radius: 15px; display: flex; justify-content: space-between; align-items: center; transition: transform 0.2s; }
+        .day-card.is-today { border: 2px solid var(--primary); background: #f0fff4; transform: scale(1.02); }
+        .day-card.weekend { background: #f8f9fa; opacity: 0.6; border-style: dashed; }
+        .day-card.holiday { background: #fffbe6; border-color: #f1c40f; }
+        
+        .date-info { font-weight: bold; width: 95px; font-size: 0.95rem; }
+        .chef-info { color: var(--accent); font-weight: 800; font-size: 1.1rem; flex-grow: 1; text-align: center; }
+        .swap-btn { background: #f1f2f6; border: none; padding: 8px 12px; border-radius: 8px; cursor: pointer; font-size: 0.75rem; font-weight: 600; color: #57606f; }
+        .swap-btn:hover { background: #dfe4ea; }
+        
+        .footer-note { font-size: 0.8rem; text-align: center; margin-top: 25px; color: #a4b0be; line-height: 1.5; }
     </style>
 </head>
 <body>
 
+<div class="header">
+    <h1>🥘 UNSERE GOURMET-WG</h1>
+    <div class="today-chef-box">
+        <span class="today-label" id="top-label">Heutiger Lieblingskoch:</span>
+        <span class="today-name" id="top-chef">Wird geladen...</span>
+        <span id="random-quote">Guten Appetit!</span>
+    </div>
+</div>
+
 <div class="container">
-    <h1>🍳 WG Kochplan</h1>
-    <h2>Thilo startet am Montag, 02.03.</h2>
     <div id="calendar" class="calendar-grid"></div>
-    <p class="footer-note">Reihenfolge: Lina, Janco, Cosi, Thilo, Felix, Aurel</p>
+    <p class="footer-note">Reihenfolge: Lina, Janco, Cosi, Thilo, Felix, Aurel<br>Montag bis Donnerstag wird der Kochlöffel geschwungen.</p>
 </div>
 
 <script>
     const bewohner = ["Lina", "Janco", "Cosi", "Thilo", "Felix", "Aurel"];
+    
+    // Lustige Sprüche
+    const sprueche = [
+        "Sterneküche oder Nudeln mit Ketchup?",
+        "Salz ist kein Gewürz, es ist eine Lebenseinstellung.",
+        "Wer nicht kocht, muss abwaschen!",
+        "Hoffentlich brennt heute nichts an...",
+        "Gourmet-Essen incoming!",
+        "Pizza bestellen ist heute keine Option!",
+        "Mami wäre stolz auf dich."
+    ];
+
     const ferien2026 = [
         { s: "2026-03-30", e: "2026-04-11" }, 
         { s: "2026-05-26", e: "2026-06-05" }, 
         { s: "2026-08-03", e: "2026-09-14" }, 
         { s: "2026-11-02", e: "2026-11-06" }, 
-        { s: "2026-12-23", e: "2027-01-05" }
-    ];
-
-    let overrides = JSON.parse(localStorage.getItem('wgOverrides')) || {};
-
-    function isHoliday(date) {
-        let d = new Date(date);
-        d.setHours(12,0,0,0);
-        return ferien2026.some(f => {
-            let s = new Date(f.s + "T00:00:00");
-            let e = new Date(f.e + "T23:59:59");
-            return d >= s && d <= e;
-        });
-    }
-
-    function renderCalendar() {
-        const calendarDiv = document.getElementById('calendar');
-        calendarDiv.innerHTML = "";
-        
-        let startAnzeige = new Date(); // Heute starten
-        startAnzeige.setHours(0,0,0,0);
-
-        // Fester Ankerpunkt: Montag, 02.03.2026 ist Thilo (Index 3)
-        const ankerDatum = new Date(2026, 2, 2, 12, 0, 0); 
-        const ankerIndex = 3; 
-
-        for (let i = 0; i < 28; i++) {
-            let current = new Date(startAnzeige);
-            current.setDate(startAnzeige.getDate() + i);
-            current.setHours(12, 0, 0, 0);
-            
-            let dateStr = current.toISOString().split('T')[0];
-            let dayOfWeek = current.getDay(); 
-            
-            let card = document.createElement('div');
-            card.className = 'day-card';
-            if (i === 0) card.classList.add('today');
-
-            let dateDisplay = current.toLocaleDateString('de-DE', { weekday: 'short', day: '2-digit', month: '2-digit' });
-            let content = `<div class="date-info">${i === 0 ? "Heute" : dateDisplay}</div>`;
-
-            if (dayOfWeek === 0 || dayOfWeek === 5 || dayOfWeek === 6) {
-                card.classList.add('weekend');
-                content += `<div class="chef-info">Frei 🍺</div><div style="width:60px"></div>`;
-            } else if (isHoliday(current)) {
-                card.classList.add('holiday');
-                content += `<div class="chef-info">Ferien 🏖️</div><div style="width:60px"></div>`;
-            } else if (current < ankerDatum) {
-                content += `<div class="chef-info">Noch offen</div><div style="width:60px"></div>`;
-            } else {
-                // Kochtage zählen ab dem 02.03.
-                let kochTagCounter = 0;
-                let checker = new Date(ankerDatum);
-                while (checker <= current) {
-                    let dO = checker.getDay();
-                    if (dO >= 1 && dO <= 4 && !isHoliday(checker)) {
-                        kochTagCounter++;
-                    }
-                    checker.setDate(checker.getDate() + 1);
-                }
-                
-                let index = (ankerIndex + (kochTagCounter - 1)) % bewohner.length;
-                let chef = overrides[dateStr] || bewohner[index];
-
-                content += `<div class="chef-info" id="chef-${dateStr}">${chef}</div>`;
-                content += `<button class="swap-btn" onclick="swap('${dateStr}')">Tausch</button>`;
-            }
-
-            card.innerHTML = content;
-            calendarDiv.appendChild(card);
-        }
-    }
-
-    function swap(dateStr) {
-        let p = prompt("Wer kocht stattdessen?");
-        if (p) {
-            overrides[dateStr] = p;
-            localStorage.setItem('wgOverrides', JSON.stringify(overrides));
-            renderCalendar();
-        }
-    }
-
-    renderCalendar();
-</script>
-
-</body>
-</html>
+        { s: "2026-12-23", e: "2027-01-05
