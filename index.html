@@ -3,122 +3,18 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>WG Kochplan Gourmet</title>
+    <title>WG Kochplan Live</title>
     <style>
         :root { --primary: #2ecc71; --bg: #f5f6fa; --accent: #3498db; }
-        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background: var(--bg); padding: 0; margin: 0; color: #2f3640; }
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background: var(--bg); margin: 0; padding: 0; color: #2f3640; }
         
-        /* Obere Leiste */
         .header { background: var(--primary); color: white; padding: 40px 20px; text-align: center; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
-        .header h1 { margin: 0; font-size: 1rem; opacity: 0.9; font-weight: 400; text-transform: uppercase; letter-spacing: 2px; }
+        .header h1 { margin: 0; font-size: 1.1rem; opacity: 0.9; font-weight: 400; text-transform: uppercase; letter-spacing: 2px; }
         .today-chef-box { margin-top: 15px; background: rgba(255,255,255,0.2); padding: 20px; border-radius: 20px; backdrop-filter: blur(8px); border: 1px solid rgba(255,255,255,0.3); }
         .today-name { font-size: 2.5rem; font-weight: 900; display: block; }
         .today-label { font-size: 0.9rem; font-weight: 600; text-transform: uppercase; }
-        #random-quote { font-style: italic; font-size: 0.8rem; margin-top: 8px; opacity: 0.9; display: block; }
 
-        /* Kalender Bereich */
         .container { max-width: 500px; margin: -25px auto 40px; background: white; padding: 20px; border-radius: 25px; box-shadow: 0 15px 35px rgba(0,0,0,0.1); }
-        .calendar-grid { display: grid; grid-template-columns: 1fr; gap: 10px; margin-top: 10px; }
+        .calendar-grid { display: grid; grid-template-columns: 1fr; gap: 10px; }
         
         .day-card { border: 1px solid #edeff2; padding: 15px; border-radius: 15px; display: flex; justify-content: space-between; align-items: center; }
-        .day-card.is-today { border: 2px solid var(--primary); background: #f0fff4; }
-        .day-card.weekend { background: #f8f9fa; opacity: 0.6; border-style: dashed; }
-        .day-card.holiday { background: #fffbe6; border-color: #f1c40f; }
-        
-        .date-info { font-weight: bold; width: 90px; font-size: 0.9rem; }
-        .chef-info { color: var(--accent); font-weight: 800; font-size: 1.1rem; flex-grow: 1; text-align: center; }
-        .swap-btn { background: #f1f2f6; border: none; padding: 8px 12px; border-radius: 8px; cursor: pointer; font-size: 0.7rem; font-weight: 700; color: #57606f; }
-        
-        .footer-note { font-size: 0.75rem; text-align: center; margin-top: 20px; color: #a4b0be; line-height: 1.5; }
-    </style>
-</head>
-<body>
-
-<div class="header">
-    <h1>🥘 Unsere Gourmet-WG</h1>
-    <div class="today-chef-box">
-        <span class="today-label" id="top-label">Heutiger Lieblingskoch:</span>
-        <span class="today-name" id="top-chef">Laden...</span>
-        <span id="random-quote">Guten Appetit!</span>
-    </div>
-</div>
-
-<div class="container">
-    <div id="calendar" class="calendar-grid"></div>
-    <p class="footer-note">Reihenfolge: Lina, Janco, Cosi, Thilo, Felix, Aurel<br>Mo-Do wird gekocht | Start: Thilo (02.03.2026)</p>
-</div>
-
-<script>
-    const bewohner = ["Lina", "Janco", "Cosi", "Thilo", "Felix", "Aurel"];
-    const sprueche = [
-        "Sterneküche oder Nudeln mit Ketchup?",
-        "Salz ist kein Gewürz, es ist eine Lebenseinstellung.",
-        "Wer nicht kocht, muss abwaschen!",
-        "Hoffentlich brennt heute nichts an...",
-        "Gourmet-Essen incoming!",
-        "Pizza bestellen ist heute keine Option!",
-        "Mami wäre stolz auf dich."
-    ];
-
-    const ferien2026 = [
-        { s: "2026-03-30", e: "2026-04-11" }, 
-        { s: "2026-05-26", e: "2026-06-05" }, 
-        { s: "2026-08-03", e: "2026-09-14" }, 
-        { s: "2026-11-02", e: "2026-11-06" }, 
-        { s: "2026-12-23", e: "2027-01-05" }
-    ];
-
-    // Lade Tausche aus dem Speicher
-    let overrides = JSON.parse(localStorage.getItem('wgOverrides')) || {};
-
-    function isHoliday(date) {
-        let d = new Date(date);
-        d.setHours(12,0,0,0);
-        return ferien2026.some(f => {
-            let s = new Date(f.s + "T00:00:00");
-            let e = new Date(f.e + "T23:59:59");
-            return d >= s && d <= e;
-        });
-    }
-
-    function getChefForDate(targetDate) {
-        let d = new Date(targetDate);
-        d.setHours(12,0,0,0);
-        let day = d.getDay();
-        let dateStr = d.toISOString().split('T')[0];
-
-        // 1. Check Tausche
-        if (overrides[dateStr]) return overrides[dateStr];
-        // 2. Check Wochenende (Fr, Sa, So)
-        if (day === 0 || day === 5 || day === 6) return "WG-Pause 🍺";
-        // 3. Check Ferien
-        if (isHoliday(d)) return "Ferien 🏖️";
-
-        // 4. Rotation berechnen (Anker: Mo, 02.03.2026 = Thilo [Index 3])
-        const anker = new Date(2026, 2, 2, 12, 0, 0); 
-        const ankerIndex = 3; 
-
-        if (d < anker) return "Noch frei";
-
-        let kochTagCounter = 0;
-        let checker = new Date(anker);
-        while (checker <= d) {
-            let dw = checker.getDay();
-            if (dw >= 1 && dw <= 4 && !isHoliday(checker)) {
-                kochTagCounter++;
-            }
-            checker.setDate(checker.getDate() + 1);
-        }
-        let index = (ankerIndex + (kochTagCounter - 1)) % bewohner.length;
-        return bewohner[index];
-    }
-
-    function render() {
-        const calendarDiv = document.getElementById('calendar');
-        calendarDiv.innerHTML = "";
-        
-        let today = new Date();
-        today.setHours(12,0,0,0);
-
-        // Header Update
-        const currentChef = getChefForDate(today
