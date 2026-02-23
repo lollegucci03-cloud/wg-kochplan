@@ -67,4 +67,110 @@
         { s: "2026-05-26", e: "2026-06-05" }, 
         { s: "2026-08-03", e: "2026-09-14" }, 
         { s: "2026-11-02", e: "2026-11-06" }, 
-        { s: "2026-12-23", e: "2027-01-05
+        { s: "2026-12-23", e: "2027-01-05" }
+    ];
+
+    let overrides = JSON.parse(localStorage.getItem('wgOverrides')) || {};
+
+    function isHoliday(date) {
+        let d = new Date(date);
+        d.setHours(12,0,0,0);
+        return ferien2026.some(f => {
+            let s = new Date(f.s + "T00:00:00");
+            let e = new Date(f.e + "T23:59:59");
+            return d >= s && d <= e;
+        });
+    }
+
+    function getChefForDate(targetDate) {
+        let d = new Date(targetDate);
+        d.setHours(12,0,0,0);
+        let day = d.getDay();
+        let dateStr = d.toISOString().split('T')[0];
+
+        if (overrides[dateStr]) return overrides[dateStr];
+        if (day === 0 || day === 5 || day === 6) return "WG-Pause 🍺";
+        if (isHoliday(d)) return "Ferien-Modus 🏖️";
+
+        const ankerDatum = new Date(2026, 2, 2, 12, 0, 0); // Mo, 02.03.
+        const ankerIndex = 3; // Thilo
+
+        if (d < ankerDatum) return "Noch frei";
+
+        let kochTagCounter = 0;
+        let checker = new Date(ankerDatum);
+        while (checker <= d) {
+            let dO = checker.getDay();
+            if (dO >= 1 && dO <= 4 && !isHoliday(checker)) {
+                kochTagCounter++;
+            }
+            checker.setDate(checker.getDate() + 1);
+        }
+        let index = (ankerIndex + (kochTagCounter - 1)) % bewohner.length;
+        return bewohner[index];
+    }
+
+    function renderCalendar() {
+        const calendarDiv = document.getElementById('calendar');
+        calendarDiv.innerHTML = "";
+        
+        let today = new Date();
+        today.setHours(12,0,0,0);
+
+        // Zufälligen Spruch auswählen
+        document.getElementById('random-quote').innerText = sprueche[Math.floor(Math.random() * sprueche.length)];
+
+        // Update Top Header
+        const currentChef = getChefForDate(today);
+        document.getElementById('top-chef').innerText = currentChef;
+        
+        if(currentChef.includes("Pause") || currentChef.includes("Ferien") || currentChef.includes("frei")) {
+            document.getElementById('top-label').innerText = "Aktueller Status:";
+        } else {
+            document.getElementById('top-label').innerText = "Heutiger Lieblingskoch:";
+        }
+
+        for (let i = 0; i < 21; i++) {
+            let current = new Date();
+            current.setDate(today.getDate() + i);
+            current.setHours(12, 0, 0, 0);
+            
+            let dateStr = current.toISOString().split('T')[0];
+            let chef = getChefForDate(current);
+            
+            let card = document.createElement('div');
+            card.className = 'day-card';
+            if (i === 0) card.classList.add('is-today');
+            if (chef.includes("Pause")) card.classList.add('weekend');
+            if (chef.includes("Ferien")) card.classList.add('holiday');
+
+            let dateDisplay = current.toLocaleDateString('de-DE', { weekday: 'short', day: '2-digit', month: '2-digit' });
+            
+            let content = `<div class="date-info">${i === 0 ? "Heute" : dateDisplay}</div>`;
+            content += `<div class="chef-info" id="chef-${dateStr}">${chef}</div>`;
+            
+            if (!chef.includes("Pause") && !chef.includes("Ferien") && !chef.includes("frei")) {
+                content += `<button class="swap-btn" onclick="swap('${dateStr}')">Tausch</button>`;
+            } else {
+                content += `<div style="width:75px"></div>`;
+            }
+
+            card.innerHTML = content;
+            calendarDiv.appendChild(card);
+        }
+    }
+
+    function swap(dateStr) {
+        let p = prompt("Wer übernimmt den Kochlöffel?");
+        if (p) {
+            overrides[dateStr] = p;
+            localStorage.setItem('wgOverrides', JSON.stringify(overrides));
+            renderCalendar();
+        }
+    }
+
+    renderCalendar();
+</script>
+
+</body>
+</html>
