@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WG Kochplan - 6er WG</title>
+    <style>
+        :root { --primary: #2ecc71; --bg: #f4f4f9; --text: #333; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: var(--bg); color: var(--text); display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; }
+        .container { background: white; padding: 2rem; border-radius: 15px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); width: 90%; max-width: 500px; text-align: center; }
+        h1 { color: var(--primary); margin-bottom: 0.5rem; }
+        .status-box { background: #e8f5e9; border: 2px solid var(--primary); padding: 1rem; border-radius: 10px; margin: 1.5rem 0; }
+        .chef-name { font-size: 2rem; font-weight: bold; display: block; }
+        .holiday-notice { color: #e74c3c; font-weight: bold; }
+        .controls { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 1rem; }
+        button { padding: 10px; border: none; border-radius: 5px; cursor: pointer; transition: 0.3s; }
+        .btn-swap { background: #3498db; color: white; }
+        .btn-skip { background: #f39c12; color: white; }
+        .footer { margin-top: 2rem; font-size: 0.8rem; color: #888; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>🍳 Wer kocht heute?</h1>
+    <p id="current-date"></p>
+
+    <div id="display-area" class="status-box">
+        </div>
+
+    <div class="controls">
+        <button class="btn-swap" onclick="modifyOffset(1)">Nächste Person (Tauschen)</button>
+        <button class="btn-skip" onclick="modifyOffset(-1)">Vorherige Person</button>
+    </div>
+
+    <div class="footer">
+        Reihenfolge: Lina, Janco, Cosi, Thilo, Felix, Aurel<br>
+        (Mo-Do aktiv, Bayern-Ferien werden ignoriert)
+    </div>
+</div>
+
+<script>
+    // 1. KONFIGURATION
+    const bewohner = ["Lina", "Janco", "Cosi", "Thilo", "Felix", "Aurel"];
+    const startDatum = new Date("2026-02-23"); // Ein Montag als Referenzpunkt
+
+    // 2. FERIEN BAYERN 2026 (Beispielhafte Daten)
+    const ferien2026 = [
+        { start: new Date("2026-03-30"), end: new Date("2026-04-10") }, // Ostern
+        { start: new Date("2026-05-26"), end: new Date("2026-06-05") }, // Pfingsten
+        { start: new Date("2026-08-03"), end: new Date("2026-09-14") }, // Sommer
+    ];
+
+    // Manueller Offset für Krankheit/Tausch (wird lokal im Browser gespeichert)
+    let manualOffset = parseInt(localStorage.getItem('wgOffset')) || 0;
+
+    function isHoliday(date) {
+        return ferien2026.some(f => date >= f.start && date <= f.end);
+    }
+
+    function calculateChef() {
+        const today = new Date();
+        const dayOfWeek = today.getDay(); // 0=So, 1=Mo... 4=Do
+        
+        document.getElementById('current-date').innerText = today.toLocaleDateString('de-DE', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+
+        const display = document.getElementById('display-area');
+
+        // Check: Wochenende (Fr, Sa, So)
+        if (dayOfWeek === 0 || dayOfWeek === 5 || dayOfWeek === 6) {
+            display.innerHTML = "<b>Wochenende!</b><br>Küche bleibt kalt oder jeder für sich.";
+            return;
+        }
+
+        // Check: Ferien
+        if (isHoliday(today)) {
+            display.innerHTML = "<span class='holiday-notice'>FERIEN IN BAYERN</span><br>Der Plan pausiert.";
+            return;
+        }
+
+        // Logik: Wie viele "Kochtage" sind seit Start vergangen?
+        let diffTime = Math.abs(today - startDatum);
+        let diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+        
+        // Wir zählen nur Mo-Do
+        let kochTageCounter = 0;
+        for(let i=0; i < diffDays; i++) {
+            let d = new Date(startDatum);
+            d.setDate(d.getDate() + i);
+            let dw = d.getDay();
+            if(dw >= 1 && dw <= 4 && !isHoliday(d)) {
+                kochTageCounter++;
+            }
+        }
+
+        const index = (kochTageCounter + manualOffset) % bewohner.length;
+        display.innerHTML = "Heute ist dran:<br><span class='chef-name'>" + bewohner[index] + "</span>";
+    }
+
+    function modifyOffset(val) {
+        manualOffset += val;
+        localStorage.setItem('wgOffset', manualOffset);
+        calculateChef();
+    }
+
+    calculateChef();
+</script>
+
+</body>
+</html>
