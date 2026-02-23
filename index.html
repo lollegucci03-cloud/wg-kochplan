@@ -8,32 +8,41 @@
         :root { --primary: #2ecc71; --bg: #f5f6fa; --accent: #3498db; }
         body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background: var(--bg); padding: 20px; color: #2f3640; }
         .container { max-width: 600px; margin: 0 auto; background: white; padding: 20px; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); }
-        h1 { text-align: center; color: var(--primary); }
-        .calendar-grid { display: grid; grid-template-columns: 1fr; gap: 10px; margin-top: 20px; }
-        .day-card { border: 1px solid #dcdde1; padding: 15px; border-radius: 12px; display: flex; justify-content: space-between; align-items: center; transition: 0.2s; }
+        h1 { text-align: center; color: var(--primary); margin-bottom: 5px; }
+        h2 { text-align: center; font-size: 1rem; color: #7f8c8d; margin-top: 0; margin-bottom: 20px; }
+        .calendar-grid { display: grid; grid-template-columns: 1fr; gap: 10px; }
+        .day-card { border: 1px solid #dcdde1; padding: 15px; border-radius: 12px; display: flex; justify-content: space-between; align-items: center; }
         .day-card.weekend { background: #f1f2f6; opacity: 0.6; border-style: dashed; }
-        .day-card.holiday { background: #ffeaa7; border-color: #f1c40f; }
-        .date-info { font-weight: bold; }
-        .chef-info { color: var(--accent); font-weight: 800; font-size: 1.1rem; }
-        .swap-btn { background: #eee; border: none; padding: 5px 10px; border-radius: 5px; cursor: pointer; font-size: 0.8rem; }
-        .swap-btn:hover { background: #ddd; }
-        select { padding: 5px; border-radius: 5px; border: 1px solid #ccc; }
-        .footer-note { font-size: 0.8rem; text-align: center; margin-top: 20px; color: #7f8c8d; }
+        .day-card.holiday { background: #fff9db; border-color: #f1c40f; }
+        .date-info { font-weight: bold; width: 100px; }
+        .chef-info { color: var(--accent); font-weight: 800; font-size: 1.1rem; flex-grow: 1; text-align: center; }
+        .swap-btn { background: #eee; border: none; padding: 8px 12px; border-radius: 5px; cursor: pointer; font-size: 0.75rem; }
+        .footer-note { font-size: 0.8rem; text-align: center; margin-top: 20px; color: #7f8c8d; line-height: 1.4; }
     </style>
 </head>
 <body>
 
 <div class="container">
     <h1>🍳 WG Koch-Kalender</h1>
+    <h2>Start: Thilo (02.03.2026)</h2>
     <div id="calendar" class="calendar-grid"></div>
-    <p class="footer-note">Tipp: Klicke auf "Tauschen", wenn jemand krank ist oder ihr Pläne ändert.</p>
+    <p class="footer-note">
+        <b>Rotation:</b> Lina → Janco → Cosi → Thilo → Felix → Aurel<br>
+        <i>Gekocht wird Mo-Do. In den Bayern-Ferien wird pausiert.</i>
+    </p>
 </div>
 
 <script>
+    // Die feste Reihenfolge
     const bewohner = ["Lina", "Janco", "Cosi", "Thilo", "Felix", "Aurel"];
     
-    // Ferien Bayern 2026
-    const ferien = [
+    // START-KONFIGURATION:
+    // Wir setzen den Start auf Montag, den 02.03.2026. An diesem Tag ist Thilo dran.
+    // Thilo ist der 4. in der Liste (Index 3).
+    const startDatum = new Date("2026-03-02");
+    const startIndex = 3; // 0=Lina, 1=Janco, 2=Cosi, 3=Thilo...
+
+    const ferien2026 = [
         { s: "2026-03-30", e: "2026-04-11" }, // Ostern
         { s: "2026-05-26", e: "2026-06-05" }, // Pfingsten
         { s: "2026-08-03", e: "2026-09-14" }, // Sommer
@@ -41,57 +50,68 @@
         { s: "2026-12-23", e: "2027-01-05" }  // Weihnachten
     ];
 
-    // Speicher für manuelle Änderungen laden
     let overrides = JSON.parse(localStorage.getItem('wgOverrides')) || {};
 
     function isHoliday(date) {
-        return ferien.some(f => date >= new Date(f.s) && date <= new Date(f.e));
+        return ferien2026.some(f => {
+            let s = new Date(f.s);
+            let e = new Date(f.e);
+            return date >= s && date <= e;
+        });
     }
 
     function renderCalendar() {
         const calendarDiv = document.getElementById('calendar');
         calendarDiv.innerHTML = "";
-        let today = new Date();
-        
-        // Wir zeigen die nächsten 21 Tage an
-        let kochIndex = 0; 
-        // Referenz-Start (Montag, 23. Feb 2026) für die Grund-Rotation
-        let refDate = new Date("2026-02-23");
+        let displayDate = new Date(); // Wir starten die Anzeige ab heute
 
-        for (let i = 0; i < 21; i++) {
+        for (let i = 0; i < 28; i++) { // Zeige die nächsten 4 Wochen
             let current = new Date();
-            current.setDate(today.getDate() + i);
+            current.setDate(displayDate.getDate() + i);
+            current.setHours(0,0,0,0);
+            
             let dateStr = current.toISOString().split('T')[0];
-            let dayOfWeek = current.getDay(); // 0=So, 1=Mo...
+            let dayOfWeek = current.getDay(); 
             
             let card = document.createElement('div');
             card.className = 'day-card';
 
             let dateDisplay = current.toLocaleDateString('de-DE', { weekday: 'short', day: '2-digit', month: '2-digit' });
-            
             let content = `<div class="date-info">${dateDisplay}</div>`;
 
+            // Wochenende oder Freitag
             if (dayOfWeek === 0 || dayOfWeek === 5 || dayOfWeek === 6) {
                 card.classList.add('weekend');
-                content += `<div class="chef-info">Frei 🍺</div><div></div>`;
-            } else if (isHoliday(current)) {
+                content += `<div class="chef-info">Frei 🍺</div><div style="width:70px"></div>`;
+            } 
+            // Ferien
+            else if (isHoliday(current)) {
                 card.classList.add('holiday');
-                content += `<div class="chef-info">Ferien 🏖️</div><div></div>`;
-            } else {
-                // Koch-Logik: Wer ist dran?
-                // Wir berechnen den Standard-Chef basierend auf den vergangenen Koch-Tagen seit Referenz
-                let diff = Math.floor((current - refDate) / (1000*60*60*24));
-                let kochTagCount = 0;
-                for(let j=0; j<=diff; j++) {
-                    let d = new Date(refDate); d.setDate(d.getDate()+j);
-                    if(d.getDay() >=1 && d.getDay() <=4 && !isHoliday(d)) kochTagCount++;
+                content += `<div class="chef-info">Ferien 🏖️</div><div style="width:70px"></div>`;
+            } 
+            // Kochtage (Mo-Do)
+            else {
+                let chef = "";
+                if (current < startDatum) {
+                    chef = "Noch offen";
+                } else {
+                    // Berechne wie viele gültige Kochtage seit dem Startdatum vergangen sind
+                    let kochTagCounter = 0;
+                    let tempDate = new Date(startDatum);
+                    while (tempDate <= current) {
+                        let dw = tempDate.getDay();
+                        if (dw >= 1 && dw <= 4 && !isHoliday(tempDate)) {
+                            kochTagCounter++;
+                        }
+                        tempDate.setDate(tempDate.getDate() + 1);
+                    }
+                    // -1 weil der erste Tag schon der erste Kochtag ist
+                    let index = (startIndex + (kochTagCounter - 1)) % bewohner.length;
+                    chef = overrides[dateStr] || bewohner[index];
                 }
-                
-                let defaultChef = bewohner[(kochTagCount - 1) % bewohner.length];
-                let actualChef = overrides[dateStr] || defaultChef;
 
-                content += `<div class="chef-info" id="chef-${dateStr}">${actualChef}</div>`;
-                content += `<button class="swap-btn" onclick="swap('${dateStr}')">Tauschen</button>`;
+                content += `<div class="chef-info" id="chef-${dateStr}">${chef}</div>`;
+                content += `<button class="swap-btn" onclick="swap('${dateStr}')">Tausch</button>`;
             }
 
             card.innerHTML = content;
@@ -101,8 +121,8 @@
 
     function swap(dateStr) {
         let currentChef = document.getElementById('chef-' + dateStr).innerText;
-        let p = prompt("Wer soll stattdessen kochen?", currentChef);
-        if (p && p.trim() !== "") {
+        let p = prompt("Wer kocht stattdessen am " + dateStr + "?", currentChef);
+        if (p) {
             overrides[dateStr] = p;
             localStorage.setItem('wgOverrides', JSON.stringify(overrides));
             renderCalendar();
