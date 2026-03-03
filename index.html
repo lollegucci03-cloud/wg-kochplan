@@ -3,56 +3,43 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>WG Kochplan Live</title>
+    <title>WG Kochplan</title>
     <style>
-        :root { --primary: #2ecc71; --bg: #f5f6fa; --accent: #3498db; }
-        body { font-family: -apple-system, sans-serif; background: var(--bg); margin: 0; padding: 0; color: #2f3640; }
-        .header { background: var(--primary); color: white; padding: 40px 20px; text-align: center; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
-        .header h1 { margin: 0; font-size: 1.1rem; opacity: 0.9; font-weight: 400; text-transform: uppercase; letter-spacing: 2px; }
-        .today-chef-box { margin-top: 15px; background: rgba(255,255,255,0.2); padding: 20px; border-radius: 20px; backdrop-filter: blur(8px); border: 1px solid rgba(255,255,255,0.3); }
-        .today-name { font-size: 2.5rem; font-weight: 900; display: block; }
-        .container { max-width: 500px; margin: -25px auto 40px; background: white; padding: 20px; border-radius: 25px; box-shadow: 0 15px 35px rgba(0,0,0,0.1); }
-        .calendar-grid { display: grid; gap: 10px; }
-        .day-card { border: 1px solid #edeff2; padding: 15px; border-radius: 15px; display: flex; justify-content: space-between; align-items: center; }
-        .day-card.is-today { border: 2px solid var(--primary); background: #f0fff4; }
-        .day-card.weekend { background: #f8f9fa; opacity: 0.6; border-style: dashed; }
-        .day-card.holiday { background: #fffbe6; border-color: #f1c40f; }
-        .date-info { font-weight: bold; width: 90px; font-size: 0.9rem; }
-        .chef-info { color: var(--accent); font-weight: 800; font-size: 1.1rem; flex-grow: 1; text-align: center; }
-        .footer-note { font-size: 0.75rem; text-align: center; margin-top: 20px; color: #a4b0be; }
+        :root { --primary: #2ecc71; --bg: #f5f6fa; }
+        body { font-family: sans-serif; background: var(--bg); margin: 0; padding: 0; color: #2f3640; }
+        .header { background: var(--primary); color: white; padding: 30px 10px; text-align: center; }
+        .today-name { font-size: 2rem; font-weight: bold; display: block; margin-top: 10px; }
+        .container { max-width: 500px; margin: 20px auto; background: white; padding: 15px; border-radius: 20px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
+        .day-card { border-bottom: 1px solid #eee; padding: 12px; display: flex; justify-content: space-between; }
+        .is-today { background: #f0fff4; font-weight: bold; border-radius: 10px; }
+        .weekend { color: #aaa; font-style: italic; }
+        .chef-info { color: #3498db; font-weight: bold; }
     </style>
 </head>
 <body>
 
 <div class="header">
-    <h1>🥘 WG Gourmet-Zentrale</h1>
-    <div class="today-chef-box">
-        <span style="font-size: 0.9rem; font-weight: 600; text-transform: uppercase;">Heute kocht:</span>
-        <span class="today-name" id="top-chef">Laden...</span>
-    </div>
+    <div>Heute kocht:</div>
+    <div class="today-name" id="top-chef">Wird berechnet...</div>
 </div>
 
-<div class="container">
-    <div id="calendar" class="calendar-grid"></div>
-    <p class="footer-note">Spezial-Plan: Lea kocht heute | Felix ab 04.03.</p>
-</div>
+<div class="container" id="calendar">
+    </div>
 
 <script>
-    const sheetUrl = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSEQpGPLPJLOKyM-siB8Pwi7Pexs7ehWSxXke1_CwWW4vhJ6V1SxVnaV9JH2RD6tvwpC-TyjRl4-uz7/pub?output=csv';
+    // DEIN LINK
+    const csvUrl = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSEQpGPLPJLOKyM-siB8Pwi7Pexs7ehWSxXke1_CwWW4vhJ6V1SxVnaV9JH2RD6tvwpC-TyjRl4-uz7/pub?output=csv';
+    
     const bewohner = ["Lina", "Janco", "Cosi", "Thilo", "Felix", "Aurel"];
-    const ferien = [
-        { s: "2026-03-30", e: "2026-04-11" }, { s: "2026-05-26", e: "2026-06-05" }, 
-        { s: "2026-08-03", e: "2026-09-14" }, { s: "2026-11-02", e: "2026-11-06" }, 
-        { s: "2026-12-23", e: "2027-01-05" }
-    ];
+    const ferien = ["2026-03-30", "2026-04-11"]; // Beispiel für die nächsten Ferien
 
-    let onlineOverrides = {};
+    let overrides = {};
 
-    async function init() {
+    async function start() {
         try {
-            const response = await fetch(sheetUrl);
-            const data = await response.text();
-            const rows = data.split('\n');
-            rows.forEach((row, index) => {
-                if (index === 0) return;
-                const cols = row
+            const res = await fetch(csvUrl);
+            const data = await res.text();
+            const rows = data.split('\n').slice(1);
+            rows.forEach(r => {
+                const c = r.split(',');
+                if(c.length >= 2)
