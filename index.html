@@ -1,108 +1,129 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WG Kochplan Live</title>
+    <style>
+        :root { --primary: #2ecc71; --bg: #f5f6fa; --accent: #3498db; }
+        body { font-family: -apple-system, sans-serif; background: var(--bg); margin: 0; padding: 0; color: #2f3640; }
+        .header { background: var(--primary); color: white; padding: 40px 20px; text-align: center; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+        .header h1 { margin: 0; font-size: 1.1rem; opacity: 0.9; font-weight: 400; text-transform: uppercase; letter-spacing: 2px; }
+        .today-chef-box { margin-top: 15px; background: rgba(255,255,255,0.2); padding: 20px; border-radius: 20px; backdrop-filter: blur(8px); border: 1px solid rgba(255,255,255,0.3); }
+        .today-name { font-size: 2.5rem; font-weight: 900; display: block; }
+        .container { max-width: 500px; margin: -25px auto 40px; background: white; padding: 20px; border-radius: 25px; box-shadow: 0 15px 35px rgba(0,0,0,0.1); }
+        .calendar-grid { display: grid; gap: 10px; }
+        .day-card { border: 1px solid #edeff2; padding: 15px; border-radius: 15px; display: flex; justify-content: space-between; align-items: center; }
+        .day-card.is-today { border: 2px solid var(--primary); background: #f0fff4; }
+        .day-card.weekend { background: #f8f9fa; opacity: 0.6; border-style: dashed; }
+        .day-card.holiday { background: #fffbe6; border-color: #f1c40f; }
+        .date-info { font-weight: bold; width: 90px; font-size: 0.9rem; }
+        .chef-info { color: var(--accent); font-weight: 800; font-size: 1.1rem; flex-grow: 1; text-align: center; }
+        .footer-note { font-size: 0.75rem; text-align: center; margin-top: 20px; color: #a4b0be; }
+    </style>
+</head>
+<body>
+
+<div class="header">
+    <h1>🥘 WG Gourmet-Zentrale</h1>
+    <div class="today-chef-box">
+        <span style="font-size: 0.9rem; font-weight: 600; text-transform: uppercase;">Heute kocht:</span>
+        <span class="today-name" id="top-chef">Laden...</span>
+    </div>
+</div>
+
+<div class="container">
+    <div id="calendar" class="calendar-grid"></div>
+    <p class="footer-note">Reihenfolge verschoben: Felix startet am 04.03.</p>
+</div>
+
 <script>
-    // DEIN GOOGLE SHEETS LINK BLEIBT GLEICH
+    // DEIN GOOGLE SHEETS LINK
     const sheetUrl = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSEQpGPLPJLOKyM-siB8Pwi7Pexs7ehWSxXke1_CwWW4vhJ6V1SxVnaV9JH2RD6tvwpC-TyjRl4-uz7/pub?output=csv';
 
+    // Die feste Reihenfolge deiner WG
     const bewohner = ["Lina", "Janco", "Cosi", "Thilo", "Felix", "Aurel"];
-    const ferien2026 = [
-        { s: "2026-03-30", e: "2026-04-11" }, 
-        { s: "2026-05-26", e: "2026-06-05" }, 
-        { s: "2026-08-03", e: "2026-09-14" }, 
-        { s: "2026-11-02", e: "2026-11-06" }, 
+    
+    const ferien = [
+        { s: "2026-03-30", e: "2026-04-11" }, { s: "2026-05-26", e: "2026-06-05" }, 
+        { s: "2026-08-03", e: "2026-09-14" }, { s: "2026-11-02", e: "2026-11-06" }, 
         { s: "2026-12-23", e: "2027-01-05" }
     ];
 
     let onlineOverrides = {};
 
-    async function loadSheetData() {
+    async function init() {
         try {
             const response = await fetch(sheetUrl);
             const data = await response.text();
             const rows = data.split('\n');
             rows.forEach((row, index) => {
                 if (index === 0) return;
-                const columns = row.split(',');
-                if (columns.length >= 2) {
-                    const datum = columns[0].trim();
-                    const name = columns[1].trim();
-                    if (datum && name) onlineOverrides[datum] = name;
+                const cols = row.split(',');
+                if (cols.length >= 2) {
+                    const d = cols[0].trim();
+                    const n = cols[1].trim();
+                    if (d && n) onlineOverrides[d] = n;
                 }
             });
-            renderCalendar();
-        } catch (error) {
-            console.error("Fehler beim Abrufen der Google Tabelle:", error);
-            renderCalendar();
-        }
+        } catch (err) { console.warn("Google Sync offline"); }
+        render();
     }
 
     function isHoliday(date) {
-        let d = new Date(date);
-        d.setHours(12,0,0,0);
-        return ferien2026.some(f => {
-            let s = new Date(f.s + "T00:00:00");
-            let e = new Date(f.e + "T23:59:59");
-            return d >= s && d <= e;
-        });
+        let d = new Date(date); d.setHours(12,0,0,0);
+        return ferien.some(f => d >= new Date(f.s + "T12:00:00") && d <= new Date(f.e + "T12:00:00"));
     }
 
-    function getChefForDate(targetDate) {
-        let d = new Date(targetDate);
-        d.setHours(12,0,0,0);
-        let day = d.getDay();
+    function getChef(target) {
+        let d = new Date(target); d.setHours(12,0,0,0);
         let dateStr = d.toISOString().split('T')[0];
 
-        // 1. Tausch aus Google Tabelle (für heute die Freundin eintragen!)
+        // 1. Check Google Tabelle (für die Freundin heute)
         if (onlineOverrides[dateStr]) return onlineOverrides[dateStr];
         
         // 2. Wochenende / Ferien
+        let day = d.getDay();
         if (day === 0 || day === 5 || day === 6) return "WG-Pause 🍺";
         if (isHoliday(d)) return "Ferien 🏖️";
 
-        // 3. ANGEPASSTE ROTATION: 
-        // Wir setzen den Anker auf Dienstag, den 03.03.2026.
-        // Da heute die Freundin kocht (per Tabelle), wird Felix (Index 4) 
-        // durch die Logik auf den nächsten verfügbaren Koch-Tag geschoben.
-        const ankerDatum = new Date(2026, 2, 3, 12, 0, 0); 
-        const ankerIndex = 4; // Felix startet jetzt die neue Kette
+        // 3. NEUE LOGIK: Felix startet am Mittwoch, den 04.03.2026
+        const anker = new Date(2026, 2, 4, 12, 0, 0); 
+        const ankerIndex = 4; // Index von Felix in der Liste ["Lina", "Janco", "Cosi", "Thilo", "Felix", "Aurel"]
 
-        if (d < ankerDatum) return "Vergangenheit";
+        if (d < anker) return "Freundin / Besuch"; // Fallback für den heutigen Tag, falls Tabelle leer wäre
 
-        let kochTagCounter = 0;
-        let checker = new Date(ankerDatum);
-        while (checker <= d) {
-            let dO = checker.getDay();
-            if (dO >= 1 && dO <= 4 && !isHoliday(checker)) {
-                kochTagCounter++;
-            }
-            checker.setDate(checker.getDate() + 1);
+        let count = 0;
+        let check = new Date(anker);
+        while (check <= d) {
+            if (check.getDay() >= 1 && check.getDay() <= 4 && !isHoliday(check)) count++;
+            check.setDate(check.getDate() + 1);
         }
-        let index = (ankerIndex + (kochTagCounter - 1)) % bewohner.length;
+        
+        let index = (ankerIndex + (count - 1)) % bewohner.length;
         return bewohner[index];
     }
 
-    function renderCalendar() {
-        const calendarDiv = document.getElementById('calendar');
-        calendarDiv.innerHTML = "";
-        let today = new Date();
-        today.setHours(12,0,0,0);
+    function render() {
+        const cal = document.getElementById('calendar');
+        cal.innerHTML = "";
+        let today = new Date(); today.setHours(12,0,0,0);
 
-        const chefHeute = getChefForDate(today);
-        document.getElementById('top-chef').innerText = chefHeute;
-        document.getElementById('top-label').innerText = (chefHeute.includes("Pause") || chefHeute.includes("Ferien")) ? "Status:" : "Heutiger Lieblingskoch:";
+        document.getElementById('top-chef').innerText = getChef(today);
 
         for (let i = 0; i < 21; i++) {
-            let current = new Date();
-            current.setDate(today.getDate() + i);
-            current.setHours(12, 0, 0, 0);
-            let chef = getChefForDate(current);
+            let curr = new Date(); curr.setDate(today.getDate() + i); curr.setHours(12,0,0,0);
+            let chef = getChef(curr);
             let card = document.createElement('div');
-            card.className = 'day-card';
-            if (i === 0) card.classList.add('is-today');
-            if (chef.includes("Pause")) card.classList.add('weekend');
-            if (chef.includes("Ferien")) card.classList.add('holiday');
-            let dateDisplay = current.toLocaleDateString('de-DE', { weekday: 'short', day: '2-digit', month: '2-digit' });
-            card.innerHTML = `<div class="date-info">${i === 0 ? "Heute" : dateDisplay}</div><div class="chef-info">${chef}</div><div style="width:20px"></div>`;
-            calendarDiv.appendChild(card);
+            card.className = `day-card ${i===0?'is-today':''} ${chef.includes('Pause')?'weekend':''} ${chef.includes('Ferien')?'holiday':''}`;
+            card.innerHTML = `
+                <div class="date-info">${i===0?'Heute':curr.toLocaleDateString('de-DE',{weekday:'short',day:'2-digit',month:'2-digit'})}</div>
+                <div class="chef-info">${chef}</div>
+            `;
+            cal.appendChild(card);
         }
     }
-    loadSheetData();
+    init();
 </script>
+</body>
+</html>
