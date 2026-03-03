@@ -8,64 +8,112 @@
         :root { --primary: #2ecc71; --bg: #f5f6fa; }
         body { font-family: sans-serif; background: var(--bg); margin: 0; padding: 0; color: #2f3640; }
         .header { background: var(--primary); color: white; padding: 30px 10px; text-align: center; }
-        .today-name { font-size: 2rem; font-weight: bold; display: block; margin-top: 10px; }
+        .today-name { font-size: 2.2rem; font-weight: bold; display: block; margin-top: 10px; }
         .container { max-width: 500px; margin: 20px auto; background: white; padding: 15px; border-radius: 20px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
-        .day-card { border-bottom: 1px solid #eee; padding: 12px; display: flex; justify-content: space-between; align-items: center; }
-        .is-today { background: #f0fff4; font-weight: bold; border-radius: 10px; border: 2px solid var(--primary); }
-        .weekend { color: #aaa; font-style: italic; background: #fafafa; }
-        .chef-info { color: #3498db; font-weight: bold; font-size: 1.1rem; }
+        .day-row { border-bottom: 1px solid #eee; padding: 15px; display: flex; justify-content: space-between; align-items: center; }
+        .is-today { background: #f0fff4; font-weight: bold; border-radius: 12px; border: 2px solid var(--primary); }
+        .weekend { color: #95a5a6; font-style: italic; background: #fafafa; }
+        .chef { color: #3498db; font-weight: bold; font-size: 1.1rem; }
     </style>
 </head>
 <body>
 
 <div class="header">
     <div>Heute kocht:</div>
-    <div class="today-name" id="top-chef">Laden...</div>
+    <div id="top-name" class="today-name">Wird geladen...</div>
 </div>
 
-<div class="container" id="calendar">
+<div class="container" id="calendar-list">
     </div>
 
 <script>
-    const csvUrl = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSEQpGPLPJLOKyM-siB8Pwi7Pexs7ehWSxXke1_CwWW4vhJ6V1SxVnaV9JH2RD6tvwpC-TyjRl4-uz7/pub?output=csv';
-    const bewohner = ["Lina", "Janco", "Cosi", "Thilo", "Felix", "Aurel"];
+    // Konfiguration
+    const SHEET_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSEQpGPLPJLOKyM-siB8Pwi7Pexs7ehWSxXke1_CwWW4vhJ6V1SxVnaV9JH2RD6tvwpC-TyjRl4-uz7/pub?output=csv';
+    const BEWOHNER = ["Lina", "Janco", "Cosi", "Thilo", "Felix", "Aurel"];
     
-    let overrides = {};
+    let onlineTausche = {};
 
-    async function start() {
+    async function ladeDatenUndStart() {
         try {
-            const res = await fetch(csvUrl);
-            const data = await res.text();
-            const rows = data.split('\n').slice(1);
-            rows.forEach(r => {
-                const c = r.split(',');
-                if(c.length >= 2) {
-                    const d = c[0].trim();
-                    const n = c[1].trim();
-                    if(d && n) overrides[d] = n;
+            const res = await fetch(SHEET_URL);
+            const csv = await res.text();
+            const zeilen = csv.split('\n').slice(1);
+            zeilen.forEach(z => {
+                const spalten = z.split(',');
+                if(spalten.length >= 2) {
+                    const datum = spalten[0].trim();
+                    const name = spalten[1].trim();
+                    if(datum && name) onlineTausche[datum] = name;
                 }
             });
-        } catch(e) { console.log("Google Sheet konnte nicht geladen werden."); }
-        render();
+        } catch(e) { console.warn("Google Sheet Sync fehlgeschlagen."); }
+        
+        baueKalender();
     }
 
-    function getChef(d) {
-        // Formatiere Datum zu JJJJ-MM-TT
-        const offset = d.getTimezoneOffset();
-        const localized = new Date(d.getTime() - (offset * 60 * 1000));
-        const dateStr = localized.toISOString().split('T')[0];
-        
-        // 1. Google Tabelle (Manuelle Tausche)
-        if (overrides[dateStr]) return overrides[dateStr];
-        
-        // 2. Wochenende (Fr, Sa, So)
-        const day = d.getDay();
-        if (day === 0 || day === 5 || day === 6) return "WG-Pause 🍺";
+    function werKocht(datumObj) {
+        // Datum in Format JJJJ-MM-TT bringen
+        const j = datumObj.getFullYear();
+        const m = String(datumObj.getMonth() + 1).padStart(2, '0');
+        const t = String(datumObj.getDate()).padStart(2, '0');
+        const dStr = `${j}-${m}-${t}`;
 
-        // 3. HEUTE: Spezialfall Besuch (03.03.2026)
-        if (dateStr === "2026-03-03") return "unser toller Besuch 🍕";
+        // 1. Check Google Tabelle
+        if (onlineTausche[dStr]) return onlineTausche[dStr];
 
-        // 4. NEUE ROTATION ab Morgen (04.03.2026) mit Felix
-        // Felix ist an Index 4 der Liste
-        const anker = new Date(2026, 2, 4, 12, 0, 0); 
-        if (d < anker) return "Besuchstag
+        // 2. Wochenende (Fr=5, Sa=6, So=0)
+        const wochentag = datumObj.getDay();
+        if (wochentag === 0 || wochentag === 5 || wochentag === 6) return "WG-Pause 🍺";
+
+        // 3. Spezialfall HEUTE (03.03.2026)
+        if (dStr === "2026-03-03") return "unser toller Besuch 🍕";
+
+        // 4. Rotation ab 04.03.2026 (Felix startet)
+        const anker = new Date(2026, 2, 4); // 4. März
+        if (datumObj < anker) return "Besuch";
+
+        let kochTage = 0;
+        let temp = new Date(2026, 2, 4);
+        while (temp <= datumObj) {
+            const wt = temp.getDay();
+            if (wt >= 1 && wt <= 4) kochTage++;
+            temp.setDate(temp.getDate() + 1);
+        }
+
+        // Felix ist Index 4
+        const index = (4 + (kochTage - 1)) % BEWOHNER.length;
+        return BEWOHNER[index];
+    }
+
+    function baueKalender() {
+        const liste = document.getElementById('calendar-list');
+        liste.innerHTML = "";
+        const heute = new Date();
+        heute.setHours(0,0,0,0);
+
+        // Header oben setzen
+        document.getElementById('top-name').innerText = werKocht(heute);
+
+        // Nächste 14 Tage
+        for (let i = 0; i < 14; i++) {
+            const tag = new Date();
+            tag.setDate(heute.getDate() + i);
+            tag.setHours(0,0,0,0);
+            
+            const koch = werKocht(tag);
+            const zeile = document.createElement('div');
+            zeile.className = 'day-row';
+            if (i === 0) zeile.className += ' is-today';
+            if (koch.includes("Pause")) zeile.className += ' weekend';
+
+            const datumText = i === 0 ? "Heute" : tag.toLocaleDateString('de-DE', {weekday: 'short', day: '2-digit', month: '2-digit'});
+            
+            zeile.innerHTML = `<span>${datumText}</span><span class="chef">${koch}</span>`;
+            liste.appendChild(zeile);
+        }
+    }
+
+    ladeDatenUndStart();
+</script>
+</body>
+</html>
