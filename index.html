@@ -34,16 +34,12 @@
 
 <div class="container">
     <div id="calendar" class="calendar-grid"></div>
-    <p class="footer-note">Reihenfolge verschoben: Felix startet am 04.03.</p>
+    <p class="footer-note">Spezial-Plan: Lea kocht heute | Felix ab 04.03.</p>
 </div>
 
 <script>
-    // DEIN GOOGLE SHEETS LINK
     const sheetUrl = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSEQpGPLPJLOKyM-siB8Pwi7Pexs7ehWSxXke1_CwWW4vhJ6V1SxVnaV9JH2RD6tvwpC-TyjRl4-uz7/pub?output=csv';
-
-    // Die feste Reihenfolge deiner WG
     const bewohner = ["Lina", "Janco", "Cosi", "Thilo", "Felix", "Aurel"];
-    
     const ferien = [
         { s: "2026-03-30", e: "2026-04-11" }, { s: "2026-05-26", e: "2026-06-05" }, 
         { s: "2026-08-03", e: "2026-09-14" }, { s: "2026-11-02", e: "2026-11-06" }, 
@@ -59,71 +55,4 @@
             const rows = data.split('\n');
             rows.forEach((row, index) => {
                 if (index === 0) return;
-                const cols = row.split(',');
-                if (cols.length >= 2) {
-                    const d = cols[0].trim();
-                    const n = cols[1].trim();
-                    if (d && n) onlineOverrides[d] = n;
-                }
-            });
-        } catch (err) { console.warn("Google Sync offline"); }
-        render();
-    }
-
-    function isHoliday(date) {
-        let d = new Date(date); d.setHours(12,0,0,0);
-        return ferien.some(f => d >= new Date(f.s + "T12:00:00") && d <= new Date(f.e + "T12:00:00"));
-    }
-
-    function getChef(target) {
-        let d = new Date(target); d.setHours(12,0,0,0);
-        let dateStr = d.toISOString().split('T')[0];
-
-        // 1. Check Google Tabelle (für die Freundin heute)
-        if (onlineOverrides[dateStr]) return onlineOverrides[dateStr];
-        
-        // 2. Wochenende / Ferien
-        let day = d.getDay();
-        if (day === 0 || day === 5 || day === 6) return "WG-Pause 🍺";
-        if (isHoliday(d)) return "Ferien 🏖️";
-
-        // 3. NEUE LOGIK: Felix startet am Mittwoch, den 04.03.2026
-        const anker = new Date(2026, 2, 4, 12, 0, 0); 
-        const ankerIndex = 4; // Index von Felix in der Liste ["Lina", "Janco", "Cosi", "Thilo", "Felix", "Aurel"]
-
-        if (d < anker) return "Freundin / Besuch"; // Fallback für den heutigen Tag, falls Tabelle leer wäre
-
-        let count = 0;
-        let check = new Date(anker);
-        while (check <= d) {
-            if (check.getDay() >= 1 && check.getDay() <= 4 && !isHoliday(check)) count++;
-            check.setDate(check.getDate() + 1);
-        }
-        
-        let index = (ankerIndex + (count - 1)) % bewohner.length;
-        return bewohner[index];
-    }
-
-    function render() {
-        const cal = document.getElementById('calendar');
-        cal.innerHTML = "";
-        let today = new Date(); today.setHours(12,0,0,0);
-
-        document.getElementById('top-chef').innerText = getChef(today);
-
-        for (let i = 0; i < 21; i++) {
-            let curr = new Date(); curr.setDate(today.getDate() + i); curr.setHours(12,0,0,0);
-            let chef = getChef(curr);
-            let card = document.createElement('div');
-            card.className = `day-card ${i===0?'is-today':''} ${chef.includes('Pause')?'weekend':''} ${chef.includes('Ferien')?'holiday':''}`;
-            card.innerHTML = `
-                <div class="date-info">${i===0?'Heute':curr.toLocaleDateString('de-DE',{weekday:'short',day:'2-digit',month:'2-digit'})}</div>
-                <div class="chef-info">${chef}</div>
-            `;
-            cal.appendChild(card);
-        }
-    }
-    init();
-</script>
-</body>
-</html>
+                const cols = row
