@@ -10,29 +10,26 @@
         .header { background: var(--primary); color: white; padding: 30px 10px; text-align: center; }
         .today-name { font-size: 2rem; font-weight: bold; display: block; margin-top: 10px; }
         .container { max-width: 500px; margin: 20px auto; background: white; padding: 15px; border-radius: 20px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
-        .day-card { border-bottom: 1px solid #eee; padding: 12px; display: flex; justify-content: space-between; }
-        .is-today { background: #f0fff4; font-weight: bold; border-radius: 10px; }
-        .weekend { color: #aaa; font-style: italic; }
-        .chef-info { color: #3498db; font-weight: bold; }
+        .day-card { border-bottom: 1px solid #eee; padding: 12px; display: flex; justify-content: space-between; align-items: center; }
+        .is-today { background: #f0fff4; font-weight: bold; border-radius: 10px; border: 2px solid var(--primary); }
+        .weekend { color: #aaa; font-style: italic; background: #fafafa; }
+        .chef-info { color: #3498db; font-weight: bold; font-size: 1.1rem; }
     </style>
 </head>
 <body>
 
 <div class="header">
     <div>Heute kocht:</div>
-    <div class="today-name" id="top-chef">Wird berechnet...</div>
+    <div class="today-name" id="top-chef">Laden...</div>
 </div>
 
 <div class="container" id="calendar">
     </div>
 
 <script>
-    // DEIN LINK
     const csvUrl = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSEQpGPLPJLOKyM-siB8Pwi7Pexs7ehWSxXke1_CwWW4vhJ6V1SxVnaV9JH2RD6tvwpC-TyjRl4-uz7/pub?output=csv';
-    
     const bewohner = ["Lina", "Janco", "Cosi", "Thilo", "Felix", "Aurel"];
-    const ferien = ["2026-03-30", "2026-04-11"]; // Beispiel für die nächsten Ferien
-
+    
     let overrides = {};
 
     async function start() {
@@ -42,4 +39,33 @@
             const rows = data.split('\n').slice(1);
             rows.forEach(r => {
                 const c = r.split(',');
-                if(c.length >= 2)
+                if(c.length >= 2) {
+                    const d = c[0].trim();
+                    const n = c[1].trim();
+                    if(d && n) overrides[d] = n;
+                }
+            });
+        } catch(e) { console.log("Google Sheet konnte nicht geladen werden."); }
+        render();
+    }
+
+    function getChef(d) {
+        // Formatiere Datum zu JJJJ-MM-TT
+        const offset = d.getTimezoneOffset();
+        const localized = new Date(d.getTime() - (offset * 60 * 1000));
+        const dateStr = localized.toISOString().split('T')[0];
+        
+        // 1. Google Tabelle (Manuelle Tausche)
+        if (overrides[dateStr]) return overrides[dateStr];
+        
+        // 2. Wochenende (Fr, Sa, So)
+        const day = d.getDay();
+        if (day === 0 || day === 5 || day === 6) return "WG-Pause 🍺";
+
+        // 3. HEUTE: Spezialfall Besuch (03.03.2026)
+        if (dateStr === "2026-03-03") return "unser toller Besuch 🍕";
+
+        // 4. NEUE ROTATION ab Morgen (04.03.2026) mit Felix
+        // Felix ist an Index 4 der Liste
+        const anker = new Date(2026, 2, 4, 12, 0, 0); 
+        if (d < anker) return "Besuchstag
