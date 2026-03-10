@@ -26,7 +26,6 @@
 <div class="container" id="calendar-list"></div>
 
 <script>
-    // URL deiner veröffentlichten CSV (Google Tabelle)
     const SHEET_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSEQpGPLPJLOKyM-siB8Pwi7Pexs7ehWSxXke1_CwWW4vhJ6V1SxVnaV9JH2RD6tvwpC-TyjRl4-uz7/pub?output=csv';
     const BEWOHNER = ["Lina", "Janco", "Cosi", "Thilo", "Felix", "Aurel"];
     
@@ -48,63 +47,3 @@
         } catch(e) { console.warn("Google Sheet Sync fehlgeschlagen."); }
         baueKalender();
     }
-
-    function werKocht(datumObj) {
-        const j = datumObj.getFullYear();
-        const m = String(datumObj.getMonth() + 1).padStart(2, '0');
-        const t = String(datumObj.getDate()).padStart(2, '0');
-        const dStr = `${j}-${m}-${t}`;
-
-        // 1. PRIORITÄT: Google Tabelle (Tausche überschreiben alles)
-        if (onlineTausche[dStr]) return onlineTausche[dStr];
-
-        // 2. Wochenende (Fr=5, Sa=6, So=0)
-        const wochentag = datumObj.getDay();
-        if (wochentag === 0 || wochentag === 5 || wochentag === 6) return "WG-Pause 🍺";
-
-        // 3. Reguläre Rotation (Anker 02.03.2026 / Thilo)
-        const anker = new Date(2026, 2, 2); 
-        if (datumObj < anker) return "Start am 02.03.";
-
-        let kochTage = 0;
-        let temp = new Date(anker);
-        while (temp <= datumObj) {
-            const wt = temp.getDay();
-            if (wt >= 1 && wt <= 4) kochTage++;
-            temp.setDate(temp.getDate() + 1);
-        }
-
-        // Thilo startete am 02.03. (Index 3)
-        const index = (3 + (kochTage - 1)) % BEWOHNER.length;
-        return BEWOHNER[index];
-    }
-
-    function baueKalender() {
-        const liste = document.getElementById('calendar-list');
-        liste.innerHTML = "";
-        const heute = new Date();
-        heute.setHours(0,0,0,0);
-
-        document.getElementById('top-name').innerText = werKocht(heute);
-
-        for (let i = 0; i < 14; i++) {
-            const tag = new Date();
-            tag.setDate(heute.getDate() + i);
-            tag.setHours(0,0,0,0);
-            
-            const koch = werKocht(tag);
-            const zeile = document.createElement('div');
-            zeile.className = 'day-row';
-            if (i === 0) zeile.className += ' is-today';
-            if (koch.includes("Pause")) zeile.className += ' weekend';
-
-            const datumText = i === 0 ? "Heute" : tag.toLocaleDateString('de-DE', {weekday: 'short', day: '2-digit', month: '2-digit'});
-            zeile.innerHTML = `<span>${datumText}</span><span class="chef">${koch}</span>`;
-            liste.appendChild(zeile);
-        }
-    }
-
-    ladeDatenUndStart();
-</script>
-</body>
-</html>
