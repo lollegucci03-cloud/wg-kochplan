@@ -20,7 +20,7 @@
 
 <div class="header">
     <div>Heute kocht:</div>
-    <div id="top-name" class="today-name">...</div>
+    <div id="top-name" class="today-name">Wird geladen...</div>
 </div>
 
 <div class="container" id="calendar-list"></div>
@@ -30,10 +30,6 @@
     const BEWOHNER = ["Lina", "Janco", "Cosi", "Thilo", "Felix", "Aurel"];
     let onlineTausche = {};
 
-    // 1. Initial direkt den Kalender anzeigen
-    renderCalendar();
-
-    // 2. Im Hintergrund Daten laden und dann aktualisieren
     async function updateData() {
         try {
             const res = await fetch(SHEET_URL);
@@ -42,8 +38,8 @@
                 const parts = row.split(',');
                 if(parts.length >= 2) onlineTausche[parts[0].trim()] = parts[1].trim();
             });
-            renderCalendar(); // Neu zeichnen mit Daten
-        } catch(e) { console.log("Daten konnten nicht geladen werden."); }
+            render();
+        } catch(e) { render(); }
     }
 
     function getChef(d) {
@@ -53,24 +49,25 @@
         const day = d.getDay();
         if (day === 0 || day === 5 || day === 6) return "WG-Pause 🍺";
 
-        const anker = new Date(2026, 2, 2); // 02.03.
-        if (d < anker) return "Start am 02.03.";
+        // Fix für heute: Janco ist dran
+        if (dStr === "2026-03-10") return "Janco";
 
+        // Rotation ab morgen (11.03.2026) -> Cosi folgt auf Janco (Index 2)
+        const anker = new Date(2026, 2, 11); 
         let kochTage = 0;
         let c = new Date(anker);
         while(c <= d) {
             if(c.getDay() >= 1 && c.getDay() <= 4) kochTage++;
             c.setDate(c.getDate() + 1);
         }
-        return BEWOHNER[(3 + (kochTage - 1)) % BEWOHNER.length];
+        return BEWOHNER[(2 + (kochTage - 1)) % BEWOHNER.length];
     }
 
-    function renderCalendar() {
+    function render() {
         const container = document.getElementById('calendar-list');
         container.innerHTML = "";
         const heute = new Date();
         heute.setHours(12,0,0,0);
-
         document.getElementById('top-name').innerText = getChef(heute);
 
         for (let i = 0; i < 14; i++) {
@@ -84,7 +81,6 @@
             container.appendChild(row);
         }
     }
-
     updateData();
 </script>
 </body>
