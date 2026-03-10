@@ -23,11 +23,10 @@
     <div id="top-name" class="today-name">Wird geladen...</div>
 </div>
 
-<div class="container" id="calendar-list">
-    </div>
+<div class="container" id="calendar-list"></div>
 
 <script>
-    // Konfiguration
+    // URL deiner veröffentlichten CSV (Google Tabelle)
     const SHEET_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSEQpGPLPJLOKyM-siB8Pwi7Pexs7ehWSxXke1_CwWW4vhJ6V1SxVnaV9JH2RD6tvwpC-TyjRl4-uz7/pub?output=csv';
     const BEWOHNER = ["Lina", "Janco", "Cosi", "Thilo", "Felix", "Aurel"];
     
@@ -47,41 +46,36 @@
                 }
             });
         } catch(e) { console.warn("Google Sheet Sync fehlgeschlagen."); }
-        
         baueKalender();
     }
 
     function werKocht(datumObj) {
-        // Datum in Format JJJJ-MM-TT bringen
         const j = datumObj.getFullYear();
         const m = String(datumObj.getMonth() + 1).padStart(2, '0');
         const t = String(datumObj.getDate()).padStart(2, '0');
         const dStr = `${j}-${m}-${t}`;
 
-        // 1. Check Google Tabelle
+        // 1. PRIORITÄT: Google Tabelle (Tausche überschreiben alles)
         if (onlineTausche[dStr]) return onlineTausche[dStr];
 
         // 2. Wochenende (Fr=5, Sa=6, So=0)
         const wochentag = datumObj.getDay();
         if (wochentag === 0 || wochentag === 5 || wochentag === 6) return "WG-Pause 🍺";
 
-        // 3. Spezialfall HEUTE (03.03.2026)
-        if (dStr === "2026-03-03") return "unser toller Besuch 🍕";
-
-        // 4. Rotation ab 04.03.2026 (Felix startet)
-        const anker = new Date(2026, 2, 4); // 4. März
-        if (datumObj < anker) return "Besuch";
+        // 3. Reguläre Rotation (Anker 02.03.2026 / Thilo)
+        const anker = new Date(2026, 2, 2); 
+        if (datumObj < anker) return "Start am 02.03.";
 
         let kochTage = 0;
-        let temp = new Date(2026, 2, 4);
+        let temp = new Date(anker);
         while (temp <= datumObj) {
             const wt = temp.getDay();
             if (wt >= 1 && wt <= 4) kochTage++;
             temp.setDate(temp.getDate() + 1);
         }
 
-        // Felix ist Index 4
-        const index = (4 + (kochTage - 1)) % BEWOHNER.length;
+        // Thilo startete am 02.03. (Index 3)
+        const index = (3 + (kochTage - 1)) % BEWOHNER.length;
         return BEWOHNER[index];
     }
 
@@ -91,10 +85,8 @@
         const heute = new Date();
         heute.setHours(0,0,0,0);
 
-        // Header oben setzen
         document.getElementById('top-name').innerText = werKocht(heute);
 
-        // Nächste 14 Tage
         for (let i = 0; i < 14; i++) {
             const tag = new Date();
             tag.setDate(heute.getDate() + i);
@@ -107,7 +99,6 @@
             if (koch.includes("Pause")) zeile.className += ' weekend';
 
             const datumText = i === 0 ? "Heute" : tag.toLocaleDateString('de-DE', {weekday: 'short', day: '2-digit', month: '2-digit'});
-            
             zeile.innerHTML = `<span>${datumText}</span><span class="chef">${koch}</span>`;
             liste.appendChild(zeile);
         }
