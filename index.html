@@ -34,3 +34,25 @@
 
     async function updateData() {
         try {
+            const res = await fetch(SHEET_URL);
+            const csv = await res.text();
+            csv.split('\n').slice(1).forEach(row => {
+                const parts = row.split(',');
+                if(parts.length >= 2) onlineTausche[parts[0].trim()] = parts[1].trim();
+            });
+            renderCalendar();
+        } catch(e) { console.log("Daten konnten nicht geladen werden."); }
+    }
+
+    function getChef(d) {
+        const dStr = d.toISOString().split('T')[0];
+        if (onlineTausche[dStr]) return onlineTausche[dStr];
+        
+        const day = d.getDay();
+        if (day === 0 || day === 5 || day === 6) return "WG-Pause 🍺";
+
+        // Heute: Besuch
+        if (dStr === "2026-03-16") return "unser toller Besuch 🍕";
+
+        // Neuer Fix: Ab morgen (17.03.) startet Felix (Index 4)
+        const an
