@@ -2,6 +2,7 @@
 <html lang="de">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>WG Kochplan</title>
     <style>
         :root { --primary: #2ecc71; --bg: #f5f6fa; }
@@ -19,69 +20,68 @@
 
 <div class="header">
     <div>Heute kocht:</div>
-    <div id="top-name" class="today-name">...</div>
+    <div id="top-name" class="today-name">Wird geladen...</div>
 </div>
 
 <div class="container" id="calendar-list"></div>
 
 <script>
-    const BEWOHNER = ["Lina", "Janco", "Cosi", "Thilo", "Felix", "Aurel"];
     const SHEET_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSEQpGPLPJLOKyM-siB8Pwi7Pexs7ehWSxXke1_CwWW4vhJ6V1SxVnaV9JH2RD6tvwpC-TyjRl4-uz7/pub?output=csv';
-    let swaps = {};
+    const BEWOHNER = ["Lina", "Janco", "Cosi", "Thilo", "Felix", "Aurel"];
+    let onlineTausche = {};
 
-    // 1. Initialer Aufbau
-    renderCalendar();
-
-    // 2. Tausche aus Tabelle im Hintergrund laden
-    fetch(SHEET_URL)
-        .then(res => res.text())
-        .then(csv => {
+    async function updateData() {
+        try {
+            const res = await fetch(SHEET_URL);
+            const csv = await res.text();
             csv.split('\n').slice(1).forEach(row => {
-                const [d, n] = row.split(',');
-                if(d && n) swaps[d.trim()] = n.trim();
+                const parts = row.split(',');
+                if(parts.length >= 2) onlineTausche[parts[0].trim()] = parts[1].trim();
             });
-            renderCalendar(); // Neu zeichnen, wenn Daten da sind
-        })
-        .catch(() => console.log("Keine Tabelle verfügbar, nutze Standardplan."));
+            render();
+        } catch(e) { render(); }
+    }
 
     function getChef(d) {
         const dStr = d.toISOString().split('T')[0];
-        if (swaps[dStr]) return swaps[dStr];
+        if (onlineTausche[dStr]) return onlineTausche[dStr];
         
-        const wd = d.getDay();
-        if (wd === 0 || wd === 5 || wd === 6) return "WG-Pause 🍺";
-        if (dStr === "2026-03-16") return "unser toller Besuch 🍕";
-        
-        const anker = new Date(2026, 2, 17);
-        if (d < anker) return "Besuchstag";
-        
-        let count = 0;
+        const day = d.getDay();
+        if (day === 0 || day === 5 || day === 6) return "WG-Pause 🍺";
+
+        // Fix für heute: Janco ist dran
+        if (dStr === "2026-03-10") return "Janco";
+
+        // Rotation ab morgen (11.03.2026) -> Cosi folgt auf Janco (Index 2)
+        const anker = new Date(2026, 2, 11); 
+        let kochTage = 0;
         let c = new Date(anker);
         while(c <= d) {
-            if(c.getDay() >= 1 && c.getDay() <= 4) count++;
+            if(c.getDay() >= 1 && c.getDay() <= 4) kochTage++;
             c.setDate(c.getDate() + 1);
         }
-        return BEWOHNER[(4 + (count - 1)) % BEWOHNER.length];
+        return BEWOHNER[(2 + (kochTage - 1)) % BEWOHNER.length];
     }
 
-    function renderCalendar() {
-        const cont = document.getElementById('calendar-list');
-        cont.innerHTML = "";
+    function render() {
+        const container = document.getElementById('calendar-list');
+        container.innerHTML = "";
         const heute = new Date();
         heute.setHours(12,0,0,0);
         document.getElementById('top-name').innerText = getChef(heute);
 
-        for (let i = 0; i < 7; i++) {
+        for (let i = 0; i < 14; i++) {
             const d = new Date();
             d.setDate(heute.getDate() + i);
-            d.setHours(12,0,0,0);
-            const name = getChef(d);
+            const koch = getChef(d);
             const row = document.createElement('div');
-            row.className = `day-row ${i===0?'is-today':''} ${name.includes('Pause')?'weekend':''}`;
-            row.innerHTML = `<span>${i===0?'Heute':d.toLocaleDateString('de-DE', {weekday:'short', day:'2-digit', month:'2-digit'})}</span><span class="chef">${name}</span>`;
-            cont.appendChild(row);
+            row.className = `day-row ${i===0?'is-today':''} ${koch.includes('Pause')?'weekend':''}`;
+            row.innerHTML = `<span>${i===0?'Heute':d.toLocaleDateString('de-DE', {weekday:'short', day:'2-digit', month:'2-digit'})}</span>
+                             <span class="chef">${koch}</span>`;
+            container.appendChild(row);
         }
     }
+    updateData();
 </script>
 </body>
 </html>
