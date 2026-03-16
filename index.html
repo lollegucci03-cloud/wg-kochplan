@@ -7,7 +7,7 @@
     <style>
         :root { --primary: #2ecc71; --bg: #f5f6fa; }
         body { font-family: sans-serif; background: var(--bg); margin: 0; padding: 0; color: #2f3640; }
-        .header { background: var(--primary); color: white; padding: 30px 10px; text-align: center; }
+        .header { background: #e67e22; color: white; padding: 30px 10px; text-align: center; }
         .today-name { font-size: 2rem; font-weight: bold; display: block; margin-top: 10px; }
         .container { max-width: 500px; margin: 20px auto; background: white; padding: 15px; border-radius: 20px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
         .day-row { border-bottom: 1px solid #eee; padding: 15px; display: flex; justify-content: space-between; align-items: center; }
@@ -20,7 +20,7 @@
 
 <div class="header">
     <div>Heute kocht:</div>
-    <div id="top-name" class="today-name">Wird geladen...</div>
+    <div id="top-name" class="today-name">Lädt...</div>
 </div>
 
 <div class="container" id="calendar-list"></div>
@@ -49,18 +49,16 @@
         const day = d.getDay();
         if (day === 0 || day === 5 || day === 6) return "WG-Pause 🍺";
 
-        // Fix für heute: Janco ist dran
-        if (dStr === "2026-03-10") return "Janco";
-
-        // Rotation ab morgen (11.03.2026) -> Cosi folgt auf Janco (Index 2)
-        const anker = new Date(2026, 2, 11); 
+        // Felix startet ab morgen, 17.03. (Felix ist Index 4)
+        const anker = new Date(2026, 2, 17); 
+        
         let kochTage = 0;
         let c = new Date(anker);
         while(c <= d) {
             if(c.getDay() >= 1 && c.getDay() <= 4) kochTage++;
             c.setDate(c.getDate() + 1);
         }
-        return BEWOHNER[(2 + (kochTage - 1)) % BEWOHNER.length];
+        return BEWOHNER[(4 + (kochTage - 1)) % BEWOHNER.length];
     }
 
     function render() {
